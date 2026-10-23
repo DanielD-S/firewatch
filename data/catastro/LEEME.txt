@@ -1,0 +1,20 @@
+Deja aquí el Catastro de Uso de Suelo y Vegetación de CONAF.
+
+Puede haber varios archivos (uno por región): se combinan todos.
+Formatos aceptados:
+  .gpkg  GeoPackage
+  .gdb   File Geodatabase (la carpeta completa)
+  .shp   Shapefile (con .shx, .dbf y .prj al lado)
+  .zip   Shapefile comprimido
+  .geojson
+
+Cualquier CRS sirve (UTM 18S/19S, SIRGAS, WGS84): se reproyecta.
+Solo se leen los polígonos dentro del área de la grilla de riesgo.
+
+Para ver cómo se clasifica antes de usarlo:
+  python -m firewatch fuel --sample 5
+
+Para recalcular el combustible y la grilla:
+  python -m firewatch grid --rebuild-fuel
+
+Donde el catastro no cubra, se rellena con ESA WorldCover.

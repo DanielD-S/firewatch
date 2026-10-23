@@ -1,0 +1,74 @@
+{
+  "type": "FeatureCollection",
+  "name": "sectores_demo",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "L-DEMO-01",
+        "name": "Linea demo 220 kV Rancagua - Talca",
+        "tipo": "linea",
+        "tension_kv": 220,
+        "criticidad": "alta",
+        "nota": "Trazado aproximado con fines de demostracion, no corresponde a una linea real"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-70.760, -34.150],
+          [-70.830, -34.300],
+          [-70.960, -34.520],
+          [-71.020, -34.620],
+          [-71.120, -34.780],
+          [-71.230, -34.960],
+          [-71.350, -35.100],
+          [-71.480, -35.250],
+          [-71.620, -35.400]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "L-DEMO-02",
+        "name": "Linea demo 220 kV Concepcion - Los Angeles",
+        "tipo": "linea",
+        "tension_kv": 220,
+        "criticidad": "alta",
+        "nota": "Trazado aproximado con fines de demostracion, no corresponde a una linea real"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-73.020, -36.850],
+          [-72.850, -36.900],
+          [-72.650, -36.980],
+          [-72.450, -37.050],
+          [-72.400, -37.250],
+          [-72.360, -37.460]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "SE-DEMO-01",
+        "name": "Subestacion demo Curico",
+        "tipo": "subestacion",
+        "tension_kv": 220,
+        "criticidad": "media",
+        "nota": "Poligono de demostracion"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-71.245, -34.975],
+          [-71.235, -34.975],
+          [-71.235, -34.983],
+          [-71.245, -34.983],
+          [-71.245, -34.975]
+        ]]
+      }
+    }
+  ]
+}

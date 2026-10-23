@@ -1,0 +1,22 @@
+# Datos locales generados por FireWatch
+data/firewatch.sqlite
+data/firewatch.sqlite-journal
+data/trazado_*.geojson
+web/state.json
+
+# Catastros de CONAF: se descargan desde sit.conaf.cl (varios GB)
+data/catastro/*
+!data/catastro/LEEME.txt
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+*.egg-info/
+
+# Editores y sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

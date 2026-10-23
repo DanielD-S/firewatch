@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FireWatch · sectores</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root { --bg:#111418; --panel:#1b2026; --text:#e8ecf1; --muted:#9aa5b1; --line:#2b333c;
+          --verde:#2e9e5b; --amarillo:#e3b73b; --naranja:#ec7f2b; --rojo:#d9372b; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.4 system-ui, Segoe UI, Roboto, sans-serif; background:var(--bg); color:var(--text); }
+  #app { display:grid; grid-template-columns: 380px 1fr; height:100vh; }
+  #panel { background:var(--panel); border-right:1px solid var(--line); overflow:auto; padding:14px 16px; }
+  #map { height:100vh; }
+  h1 { font-size:17px; margin:0 0 4px; }
+  .muted { color:var(--muted); font-size:12px; }
+  .sector { border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin:10px 0; cursor:pointer; }
+  .sector:hover { border-color:#4a5563; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-weight:600; font-size:12px; color:#111; }
+  .b-verde { background:var(--verde); color:#fff } .b-amarillo { background:var(--amarillo) }
+  .b-naranja { background:var(--naranja); color:#fff } .b-rojo { background:var(--rojo); color:#fff }
+  .scores { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:8px 0 4px; }
+  .score { background:#0f1317; border-radius:6px; padding:6px; text-align:center; }
+  .score b { display:block; font-size:16px; }
+  .score span { font-size:11px; color:var(--muted); }
+  ul.reasons { margin:6px 0 0; padding-left:18px; }
+  ul.reasons li { margin:2px 0; }
+  .alert { border-left:3px solid var(--line); padding:6px 10px; margin:6px 0; font-size:12px; white-space:pre-wrap; }
+  .alert.rojo { border-color:var(--rojo) } .alert.naranja { border-color:var(--naranja) } .alert.amarillo { border-color:var(--amarillo) }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:18px 0 6px; }
+  .legend { font-size:12px; display:grid; grid-template-columns:1fr 1fr; gap:4px 10px; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+  .leaflet-popup-content { font-size:12px; }
+  .upload { border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin:12px 0; background:#161b21; }
+  .upload .row { display:flex; gap:8px; align-items:center; margin:8px 0; flex-wrap:wrap; }
+  .upload input[type=file] { flex:1; min-width:0; color:var(--muted); font-size:12px; }
+  .upload button { background:#2e7d4f; color:#fff; border:0; border-radius:6px; padding:7px 12px; font-weight:600; cursor:pointer; }
+  .upload button.secondary { background:#2b333c; color:var(--text); font-weight:500; }
+  .upload button:disabled { opacity:.5; cursor:default; }
+  .small { font-size:11px; }
+  .msg { font-size:12px; margin-top:6px; min-height:1em; white-space:pre-wrap; }
+  .msg.ok { color:#7fd3a0 } .msg.err { color:#ff8a80 }
+  .riskbox { border:1px solid var(--line); border-radius:8px; padding:10px 12px; background:#161b21; }
+  .riskbox select { background:#0f1317; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:4px 6px; }
+  .riskbox .row { display:flex; gap:8px; align-items:center; }
+  .risklegend { font-size:11px; color:var(--muted); margin:6px 0; display:flex; flex-wrap:wrap; gap:4px 8px; align-items:center; }
+  .risklegend span { display:inline-block; width:14px; height:10px; border-radius:2px; margin-right:3px; vertical-align:middle; }
+  .topcell { display:flex; justify-content:space-between; gap:6px; font-size:12px; padding:4px 6px; border-radius:6px; cursor:pointer; }
+  .topcell:hover { background:#232a32; }
+  .topcell b { min-width:3.2em; text-align:right; }
+  @media (max-width:800px) { #app { grid-template-columns:1fr; grid-template-rows: 45vh 55vh; } #map { height:auto; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="panel">
+    <h1>FireWatch · líneas eléctricas</h1>
+    <div class="muted" id="meta">cargando…</div>
+    <div class="upload">
+      <div class="muted" id="source">trazado: —</div>
+      <div class="row">
+        <input type="file" id="file" accept=".kmz,.kml,.zip,.geojson,.json">
+        <button id="btnUpload" type="button">Cargar trazado</button>
+      </div>
+      <div class="row">
+        <button id="btnRun" type="button" class="secondary">Correr ahora</button>
+        <button id="btnReset" type="button" class="secondary">Volver al ejemplo</button>
+      </div>
+      <div class="muted small">KMZ, KML, Shapefile (zip con shp, shx, dbf y prj) o GeoJSON. Cada entidad es un sector.</div>
+      <div id="uploadMsg" class="msg"></div>
+    </div>
+    <div id="sectors"></div>
+    <h2>Riesgo por zona</h2>
+    <div class="riskbox">
+      <div class="row">
+        <label class="muted small">Mostrar</label>
+        <select id="riskMode">
+          <option value="risk_now">riesgo ahora</option>
+          <option value="risk_next">riesgo próx. 24 h</option>
+          <option value="fuel">combustible</option>
+          <option value="cond_now">condiciones ahora</option>
+          <option value="off">oculto</option>
+        </select>
+      </div>
+      <div class="muted small" id="riskMeta">sin mapa de riesgo</div>
+      <div class="risklegend">
+        <span style="background:#2e9e5b"></span>bajo
+        <span style="background:#e3b73b"></span>moderado
+        <span style="background:#ec7f2b"></span>alto
+        <span style="background:#d9372b"></span>muy alto
+        <span style="background:#7b1fa2"></span>extremo
+      </div>
+      <div id="riskTop"></div>
+    </div>
+    <h2>Leyenda</h2>
+    <div class="legend">
+      <div><span class="dot" style="background:#d9372b"></span>foco confianza alta</div>
+      <div><span class="dot" style="background:#ec7f2b"></span>foco confianza media</div>
+      <div><span class="dot" style="background:#e3b73b"></span>foco confianza baja</div>
+      <div><span class="dot" style="background:#8e6bd6"></span>foco GOES (10 min)</div>
+      <div><span class="dot" style="background:#4fc3f7"></span>rayo GLM</div>
+      <div><span class="dot" style="background:#fff; border:1px dashed #888"></span>corredor 500 m / 5 km</div>
+    </div>
+    <h2>Alertas (72 h)</h2>
+    <div id="alerts"></div>
+  </div>
+  <div id="map"></div>
+</div>
+<script>
+const COLORS = { verde:'#2e9e5b', amarillo:'#e3b73b', naranja:'#ec7f2b', rojo:'#d9372b' };
+const map = L.map('map', { zoomControl:true }).setView([-35.2, -71.5], 7);
+const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'© OpenStreetMap' }).addTo(map);
+const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom:19, attribution:'Esri' });
+const riskCanvas = L.canvas({ padding: 0.3 });
+const layers = {
+  risk: L.layerGroup().addTo(map),
+  rings: L.layerGroup().addTo(map), sectors: L.layerGroup().addTo(map),
+  hotspots: L.layerGroup().addTo(map), lightning: L.layerGroup().addTo(map), weather: L.layerGroup(),
+};
+L.control.layers({ 'Mapa': osm, 'Satélite': sat },
+  { 'Riesgo por zona': layers.risk, 'Corredores': layers.rings, 'Sectores': layers.sectors, 'Focos 24 h': layers.hotspots, 'Rayos 6 h': layers.lightning, 'Puntos meteo': layers.weather }).addTo(map);
+
+// ---- mapa de riesgo por zonas ----
+const RISK_COLORS = { bajo:'#2e9e5b', moderado:'#e3b73b', alto:'#ec7f2b', 'muy alto':'#d9372b', extremo:'#7b1fa2' };
+function riskClass(v) { return v < 0.25 ? 'bajo' : v < 0.45 ? 'moderado' : v < 0.65 ? 'alto' : v < 0.8 ? 'muy alto' : 'extremo'; }
+function coverText(cover) { return Object.entries(cover || {}).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} ${Math.round(v * 100)}%`).join(', '); }
+let lastGrid = null;
+function drawRisk() {
+  layers.risk.clearLayers();
+  const mode = document.getElementById('riskMode').value;
+  const g = lastGrid;
+  if (!g || mode === 'off') return;
+  const half = g.cell_deg / 2;
+  g.cells.forEach(c => {
+    const v = c[mode];
+    if (v === null || v === undefined) return;
+    if (mode === 'fuel' && v < 0.02) return;
+    const color = RISK_COLORS[riskClass(v)];
+    const r = L.rectangle([[c.lat - half, c.lon - half], [c.lat + half, c.lon + half]],
+      { renderer: riskCanvas, stroke: false, fillColor: color, fillOpacity: 0.18 + 0.42 * Math.min(v, 1), interactive: true });
+    r.bindPopup(`<b>Celda ${c.i}</b> (${c.lat}, ${c.lon})<br>
+      Riesgo ahora <b>${c.risk_now ?? '-'}</b> (${c.class}) · próx. 24 h <b>${c.risk_next ?? '-'}</b> (${c.class_next || '-'})<br>
+      Condiciones ${c.cond_now ?? '-'} · combustible ${c.fuel}<br>
+      ${c.temp ?? '-'} °C · HR ${c.rh ?? '-'} % · viento ${c.wind ?? '-'} km/h · ignición ${c.pi ?? '-'} % · FWI ${c.fwi ?? '-'} (${c.fwi_class || '-'})<br>
+      ${c.boton_rojo ? '<b>Regla Botón Rojo activa</b><br>' : ''}${c.r303030 ? '<b>Regla 30-30-30 activa</b><br>' : ''}
+      Cobertura: ${coverText(c.cover)}<br>lluvia 24 h ${c.precip_24h ?? '-'} mm`);
+    r.addTo(layers.risk);
+  });
+}
+function renderRiskPanel(g) {
+  lastGrid = g;
+  const meta = document.getElementById('riskMeta'), top = document.getElementById('riskTop');
+  if (!g) { meta.textContent = 'sin mapa de riesgo (riesgo por zonas desactivado o aún no calculado)'; top.innerHTML = ''; drawRisk(); return; }
+  const s = g.summary || {};
+  const bc = s.by_class || {};
+  meta.textContent = `${g.ncols}×${g.nrows} celdas de ${g.cell_deg}° · calculado ${fmtTime(g.computed_at)} · ` +
+    `${bc['extremo'] || 0} extremo · ${bc['muy alto'] || 0} muy alto · ${bc['alto'] || 0} alto · ${s.n_boton_rojo || 0} con regla Botón Rojo` +
+    ` · combustible: ${g.fuel_source || 'ESA WorldCover'}`;
+  const mode = document.getElementById('riskMode').value;
+  const key = mode === 'risk_next' ? 'risk_next' : 'risk_now';
+  const list = (mode === 'risk_next' ? g.top_next : g.top_now) || [];
+  top.innerHTML = list.length ? '<div class="muted small" style="margin-top:6px">Zonas más críticas (clic para ir)</div>' : '';
+  list.slice(0, 8).forEach(c => {
+    const el = document.createElement('div'); el.className = 'topcell';
+    el.innerHTML = `<span>${c.lat.toFixed(2)}, ${c.lon.toFixed(2)} · ${coverText(c.cover).split(',')[0] || ''}</span>
+      <span class="muted">${c.temp ?? '-'}° · ${c.rh ?? '-'}% · ${c.wind ?? '-'} km/h</span><b style="color:${RISK_COLORS[riskClass(c[key])]}">${c[key].toFixed(2)}</b>`;
+    el.onclick = () => map.setView([c.lat, c.lon], 9);
+    top.appendChild(el);
+  });
+  drawRisk();
+}
+document.getElementById('riskMode').onchange = () => renderRiskPanel(lastGrid);
+
+const sectorLayers = {};
+function hotspotColor(p) {
+  if (p.source === 'goes_fdc') return '#8e6bd6';
+  return p.confidence >= 0.75 ? '#d9372b' : p.confidence >= 0.5 ? '#ec7f2b' : '#e3b73b';
+}
+function fmtTime(s) { return s ? s.replace('T',' ').replace('Z',' UTC') : ''; }
+
+async function load() {
+  let st;
+  try { st = await (await fetch('state.json?_=' + Date.now())).json(); }
+  catch (e) { document.getElementById('meta').textContent = 'No se pudo leer state.json. Ejecuta `python -m firewatch run`.'; return; }
+  document.getElementById('meta').textContent = `Actualizado ${fmtTime(st.generated_at)} · ${st.counts.hotspots_24h} focos 24 h en Chile · ${st.counts.lightning_6h} rayos 6 h`;
+  const src = st.sectors_source || {};
+  document.getElementById('source').textContent = src.uploaded
+    ? `trazado: ${src.name} (${src.format || ''}, ${st.counts.sectors} sectores, cargado ${fmtTime(src.uploaded_at)})`
+    : `trazado: ejemplo incluido (${st.counts.sectors} sectores)`;
+
+  Object.entries(layers).forEach(([k, l]) => { if (k !== 'risk') l.clearLayers(); });
+  renderRiskPanel(st.risk_grid || null);
+  L.geoJSON(st.rings, { style: f => ({ color: f.properties.ring === 'near' ? '#ffffff' : '#9aa5b1', weight:1, dashArray:'4 4', fill:false }) }).addTo(layers.rings);
+
+  const list = document.getElementById('sectors'); list.innerHTML = '';
+  st.sectors.features.forEach(f => {
+    const p = f.properties;
+    const lyr = L.geoJSON(f, { style: { color: COLORS[p.level] || '#888', weight:4 },
+      pointToLayer: (ft, ll) => L.circleMarker(ll, { radius:8, color: COLORS[p.level] }) });
+    lyr.bindPopup(`<b>${p.name}</b><br>Nivel: <b>${p.level}</b><br>${p.reasons.join('<br>')}`);
+    lyr.addTo(layers.sectors); sectorLayers[p.id] = lyr;
+    const now = p.now, fw = p.fwi;
+    const el = document.createElement('div'); el.className = 'sector';
+    el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <b>${p.name}</b><span class="badge b-${p.level}">${p.level}</span></div>
+      <div class="scores">
+        <div class="score"><b>${p.detection_score.toFixed(2)}</b><span>detección</span></div>
+        <div class="score"><b>${p.conditions_now.toFixed(2)}</b><span>condiciones</span></div>
+        <div class="score"><b>${p.conditions_next.toFixed(2)}</b><span>próx. 24 h</span></div>
+        <div class="score"><b>${p.lightning_score.toFixed(2)}</b><span>rayos</span></div>
+      </div>
+      <div class="muted">${now ? `${now.temp_c} °C · HR ${now.rh} % · viento ${now.wind_kmh} km/h (${now.wind_dir}°) · ignición ${now.ignition_prob} %` : 'sin meteorología'}
+        ${fw ? ` · FWI ${fw.fwi} (${fw.clase})` : ''} · lluvia 24 h ${p.precip_24h} mm</div>
+      <ul class="reasons">${p.reasons.map(r => `<li>${r}</li>`).join('')}</ul>
+      <div class="muted">focos: ${p.n_hits_near} cercanos · ${p.n_hits_watch} en vigilancia · rayos ${p.n_flashes}${p.zone ? ` · zona: riesgo ${p.zone.risk_now} (${p.zone.class}), combustible ${p.zone.fuel}` : ''}</div>`;
+    el.onclick = () => { map.fitBounds(lyr.getBounds().pad(0.3)); lyr.openPopup(); };
+    list.appendChild(el);
+  });
+
+  L.geoJSON(st.hotspots, { pointToLayer: (f, ll) => {
+      const p = f.properties;
+      return L.circleMarker(ll, { radius: p.source === 'goes_fdc' ? 6 : 4, color:'#000', weight:0.5, fillColor: hotspotColor(p), fillOpacity:0.85 })
+        .bindPopup(`<b>${p.satellite}</b><br>${fmtTime(p.acq_time)}<br>confianza ${p.confidence} (${p.raw_conf || ''})<br>FRP ${p.frp ?? '-'} MW<br>${ll.lat.toFixed(4)}, ${ll.lng.toFixed(4)}`);
+  }}).addTo(layers.hotspots);
+
+  L.geoJSON(st.lightning, { pointToLayer: (f, ll) => L.circleMarker(ll, { radius:3, color:'#4fc3f7', weight:1, fillOpacity:0.9 })
+      .bindPopup(`Rayo GLM ${fmtTime(f.properties.time)}`) }).addTo(layers.lightning);
+
+  st.weather_points.forEach(w => {
+    const n = w.now || {};
+    L.circleMarker([w.lat, w.lon], { radius:5, color:'#ffffff', weight:1, fillColor:'#333', fillOpacity:0.8 })
+      .bindPopup(`<b>${w.key}</b><br>${n.time_local || ''}<br>${n.temp_c} °C · HR ${n.rh} % · viento ${n.wind_kmh} km/h · ignición ${n.ignition_prob} %<br>${w.fwi ? 'FWI ' + w.fwi.fwi + ' (' + w.fwi.clase + ')' : ''}`)
+      .addTo(layers.weather);
+  });
+
+  const al = document.getElementById('alerts'); al.innerHTML = st.alerts.length ? '' : '<div class="muted">sin alertas</div>';
+  st.alerts.forEach(a => { const d = document.createElement('div'); d.className = 'alert ' + a.level; d.textContent = `${fmtTime(a.created_at)}\n${a.message}`; al.appendChild(d); });
+
+  if (!window._fitted && st.rings.features.length) {
+    map.invalidateSize();
+    map.fitBounds(L.geoJSON(st.rings).getBounds().pad(0.2));
+    if (map.getZoom() >= 4) window._fitted = true;   // si el contenedor aún no tenía tamaño, reintenta en la próxima carga
+  }
+}
+window.addEventListener('resize', () => map.invalidateSize());
+
+// ---- subida de trazados ----
+const msg = document.getElementById('uploadMsg');
+function setMsg(text, cls) { msg.textContent = text; msg.className = 'msg ' + (cls || ''); }
+function busy(on) { ['btnUpload', 'btnRun', 'btnReset'].forEach(id => document.getElementById(id).disabled = on); }
+
+document.getElementById('btnUpload').onclick = async () => {
+  const f = document.getElementById('file').files[0];
+  if (!f) { setMsg('Elige un archivo primero.', 'err'); return; }
+  busy(true); setMsg(`Subiendo ${f.name} (${(f.size / 1024).toFixed(0)} KB) y evaluando sectores…`);
+  try {
+    const r = await fetch('api/sectors/upload', { method: 'POST', headers: { 'X-Filename': encodeURIComponent(f.name) }, body: f });
+    const j = await r.json();
+    if (!r.ok) { setMsg('Error: ' + (j.error || r.status), 'err'); return; }
+    const lv = j.levels ? Object.values(j.levels).reduce((a, l) => (a[l] = (a[l] || 0) + 1, a), {}) : null;
+    let t = `Cargado ${j.filename}: ${j.n_sectors} sectores (${j.format}, CRS ${j.crs_in})`;
+    if (j.n_skipped) t += `, ${j.n_skipped} entidades omitidas`;
+    if (lv) t += `\nNiveles: ${Object.entries(lv).map(([k, v]) => `${v} ${k}`).join(', ')}`;
+    if (j.alerts) t += ` · ${j.alerts} alertas emitidas`;
+    if (j.warnings && j.warnings.length) t += '\n' + j.warnings.join('\n');
+    if (j.note) t += '\n' + j.note;
+    setMsg(t, 'ok'); window._fitted = false; await load();
+  } catch (e) { setMsg('Error de red: ' + e, 'err'); }
+  finally { busy(false); }
+};
+document.getElementById('btnRun').onclick = async () => {
+  busy(true); setMsg('Corrida completa lanzada (descarga focos, rayos y meteorología; 1 a 3 min)…');
+  try {
+    const r = await fetch('api/run', { method: 'POST' });
+    const j = await r.json();
+    setMsg(j.started ? 'Corrida en curso; el panel se actualizará solo.' : 'Ya hay una corrida en curso.', j.started ? 'ok' : 'err');
+  } catch (e) { setMsg('Error de red: ' + e, 'err'); }
+  finally { busy(false); }
+};
+document.getElementById('btnReset').onclick = async () => {
+  busy(true); setMsg('Volviendo al trazado de ejemplo…');
+  try { await fetch('api/sectors/reset', { method: 'POST' }); setMsg('Trazado de ejemplo restaurado.', 'ok'); window._fitted = false; await load(); }
+  catch (e) { setMsg('Error de red: ' + e, 'err'); }
+  finally { busy(false); }
+};
+
+load(); setInterval(load, 60000);
+</script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+{
+  "sectors_file": "data/sample_lineas.geojson",
+  "db_path": "data/firewatch.sqlite",
+  "web_dir": "web",
+  "crs_metric": "EPSG:32719",
+  "timezone": "America/Santiago",
+  "bbox": [-76.0, -56.5, -66.0, -17.0],
+  "buffers_m": {
+    "near": 500,
+    "watch": 5000
+  },
+  "sources": {
+    "firms": {
+      "enabled": true,
+      "region": "South_America",
+      "window": "24h",
+      "products": [
+        {"dir": "suomi-npp-viirs-c2", "prefix": "SUOMI_VIIRS_C2", "name": "VIIRS SNPP"},
+        {"dir": "noaa-20-viirs-c2", "prefix": "J1_VIIRS_C2", "name": "VIIRS NOAA-20"},
+        {"dir": "noaa-21-viirs-c2", "prefix": "J2_VIIRS_C2", "name": "VIIRS NOAA-21"},
+        {"dir": "modis-c6.1", "prefix": "MODIS_C6_1", "name": "MODIS"}
+      ]
+    },
+    "goes_fdc": {
+      "enabled": true,
+      "bucket": "noaa-goes19",
+      "product": "ABI-L2-FDCF",
+      "lookback_min": 60,
+      "max_files": 6
+    },
+    "glm": {
+      "enabled": true,
+      "bucket": "noaa-goes19",
+      "product": "GLM-L2-LCFA",
+      "lookback_min": 20,
+      "max_files": 60
+    },
+    "weather": {
+      "enabled": true,
+      "sample_spacing_m": 20000,
+      "forecast_hours": 24
+    }
+  },
+  "risk_grid": {
+    "enabled": true,
+    "bbox": [-73.6, -38.6, -70.0, -29.0],
+    "cell_deg": 0.2,
+    "auto_extend": true,
+    "max_cells": 2500,
+    "refresh_min": 180,
+    "forecast_hours": 24,
+    "chunk": 100,
+    "zone_amarillo": 0.55,
+    "zone_mention": 0.35,
+    "fuel": {
+      "conaf_dir": "data/catastro",
+      "conaf_path": null,
+      "layer": null,
+      "encoding": null,
+      "worldcover": true,
+      "rules": null
+    }
+  },
+  "exclusions": [
+    {"name": "Volcan Villarrica", "lat": -39.420, "lon": -71.939, "radius_m": 4000},
+    {"name": "Volcan Llaima", "lat": -38.692, "lon": -71.729, "radius_m": 4000},
+    {"name": "Volcan Lascar", "lat": -23.370, "lon": -67.730, "radius_m": 4000},
+    {"name": "Volcan Copahue", "lat": -37.856, "lon": -71.183, "radius_m": 4000},
+    {"name": "Volcan Nevados de Chillan", "lat": -36.863, "lon": -71.377, "radius_m": 4000},
+    {"name": "Fundicion Caletones", "lat": -34.100, "lon": -70.455, "radius_m": 2500},
+    {"name": "Fundicion Ventanas", "lat": -32.750, "lon": -71.482, "radius_m": 2500},
+    {"name": "Fundicion Chuquicamata", "lat": -22.310, "lon": -68.900, "radius_m": 5000}
+  ],
+  "scoring": {
+    "hotspot_min_conf": 0.25,
+    "lightning_lookback_h": 6,
+    "lightning_dry_precip_mm": 1.0,
+    "wind_toward_tolerance_deg": 50,
+    "levels": {
+      "rojo_near_score": 0.45,
+      "rojo_watch_score": 0.6,
+      "naranja_watch_score": 0.35,
+      "amarillo_cond_score": 0.55
+    }
+  },
+  "alerts": {
+    "cooldown_min": {"amarillo": 720, "naranja": 90, "rojo": 20}
+  },
+  "notify": {
+    "console": true,
+    "telegram": {"enabled": true, "token_env": "FW_TELEGRAM_TOKEN", "chat_id_env": "FW_TELEGRAM_CHAT"},
+    "whatsapp": {"enabled": true, "token_env": "FW_WA_TOKEN", "phone_id_env": "FW_WA_PHONE_ID", "to_env": "FW_WA_TO"},
+    "webhook": {"enabled": true, "url_env": "FW_WEBHOOK_URL"}
+  }
+}
